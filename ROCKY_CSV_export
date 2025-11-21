@@ -1,0 +1,55 @@
+import os
+import numpy as np
+import pandas as pd
+
+# -------------------- USER SETTINGS --------------------
+output_folder = "/mnt/home/k0006390/research/2DaxisTo3D_SpartaToRocky/20m/export_csv"
+export_all_timesteps = False   # True = export all times
+# -------------------------------------------------------
+
+os.makedirs(output_folder, exist_ok=True)
+
+project = api.GetProject()
+study = project.GetStudy()
+particles = study.GetParticles()
+times = study.GetTimeSet().GetValues()
+
+print("Time steps found:", times)
+
+if export_all_timesteps:
+    export_times = range(len(times))
+else:
+    export_times = [len(times) - 1]  # last timestep
+
+# Rocky grid function names (MATCHED EXACTLY)
+gf_map = {
+    "id": "Particle ID",
+    "x": "Coordinate : X",
+    "y": "Coordinate : Y",
+    "z": "Coordinate : Z",
+    "vx": "Velocity : Translational : X",
+    "vy": "Velocity : Translational : Y",
+    "vz": "Velocity : Translational : Z",
+}
+
+for step in export_times:
+    print(f"Extracting step {step} (t={times[step]} s)")
+
+    n = particles.GetNumberOfNodes(step)
+    print(f"Particles = {n}")
+
+    df = pd.DataFrame()
+
+    # Extract each field
+    for key, gf_name in gf_map.items():
+        gf = particles.GetGridFunction(gf_name).GetArray(time_step=step)
+        df[key] = np.array(gf)
+
+    df["time"] = times[step]
+
+    out = os.path.join(output_folder, f"particles_t{times[step]:.6f}.csv")
+    df.to_csv(out, index=False)
+
+    print(f"✔ Saved {out}")
+
+print("🎉 Export complete.")
